@@ -32,7 +32,7 @@ export function LoginPage() {
           <div className="w-12 h-12 rounded-2xl bg-[#2563EB] flex items-center justify-center animate-pulse">
             <Wallet className="w-6 h-6 text-white" />
           </div>
-          <div className="text-[#2563EB] text-sm font-medium">加载中...</div>
+          <div className="text-[#2563EB] text-sm font-medium">Loading...</div>
         </div>
       </div>
     )
@@ -49,7 +49,7 @@ export function LoginPage() {
       await login(loginEmail, loginPassword)
       navigate("/classify")
     } catch (err: unknown) {
-      alert(`登录失败：${err instanceof Error ? err.message : "未知错误"}`)
+      alert(`Login failed: ${err instanceof Error ? err.message : "Unknown error"}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -58,7 +58,7 @@ export function LoginPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     if (registerPassword !== registerConfirmPassword) {
-      alert("密码不一致")
+      alert("Passwords do not match")
       return
     }
     setIsSubmitting(true)
@@ -66,7 +66,7 @@ export function LoginPage() {
       await register(registerUsername, registerEmail, registerPassword)
       navigate("/classify")
     } catch (err: unknown) {
-      alert(`注册失败：${err instanceof Error ? err.message : "未知错误"}`)
+      alert(`Registration failed: ${err instanceof Error ? err.message : "Unknown error"}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -89,7 +89,7 @@ export function LoginPage() {
           <h1 className="text-xl font-bold text-slate-800">
             Smart Spend AI
           </h1>
-          <p className="text-slate-500 text-[13px] mt-1">智能财务管理助手</p>
+          <p className="text-slate-500 text-[13px] mt-1">Smart Personal Finance Assistant</p>
         </div>
 
         {/* Auth Card */}
@@ -97,17 +97,17 @@ export function LoginPage() {
           <Tabs defaultValue="login" className="w-full">
             <CardHeader className="pb-0 pt-6">
               <TabsList className="grid w-full grid-cols-2 bg-slate-100 rounded-xl p-1">
-                <TabsTrigger 
-                  value="login" 
+                <TabsTrigger
+                  value="login"
                   className="rounded-lg text-[13px] data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all"
                 >
-                  登录
+                  Login
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="register"
                   className="rounded-lg text-[13px] data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all"
                 >
-                  注册
+                  Register
                 </TabsTrigger>
               </TabsList>
             </CardHeader>
@@ -117,7 +117,7 @@ export function LoginPage() {
               <TabsContent value="login" className="mt-0 animate-fade-in">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <Field>
-                    <FieldLabel className="text-slate-700 text-[13px]">邮箱</FieldLabel>
+                    <FieldLabel className="text-slate-700 text-[13px]">Email</FieldLabel>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <Input
@@ -132,7 +132,7 @@ export function LoginPage() {
                   </Field>
 
                   <Field>
-                    <FieldLabel className="text-slate-700 text-[13px]">密码</FieldLabel>
+                    <FieldLabel className="text-slate-700 text-[13px]">Password</FieldLabel>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <Input
@@ -151,7 +151,7 @@ export function LoginPage() {
                     disabled={isSubmitting}
                     className="w-full bg-[#2563EB] hover:bg-blue-600 text-white rounded-xl h-11 shadow-lg shadow-blue-200 font-medium text-[13px] transition-all"
                   >
-                    {isSubmitting ? "登录中..." : "登录"}
+                    {isSubmitting ? "Logging in..." : "Login"}
                   </Button>
                 </form>
               </TabsContent>
@@ -160,14 +160,14 @@ export function LoginPage() {
               <TabsContent value="register" className="mt-0 animate-fade-in">
                 <form onSubmit={handleRegister} className="space-y-4">
                   <Field>
-                    <FieldLabel className="text-slate-700 text-[13px]">用户名</FieldLabel>
+                    <FieldLabel className="text-slate-700 text-[13px]">Username</FieldLabel>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <Input
                         type="text"
                         value={registerUsername}
                         onChange={(e) => setRegisterUsername(e.target.value)}
-                        placeholder="你的用户名"
+                        placeholder="Your username"
                         required
                         className="pl-10 bg-slate-50 border-slate-200 focus:bg-white focus:border-[#2563EB]/50 focus:ring-[#2563EB]/20 rounded-xl text-[13px]"
                       />
@@ -175,7 +175,7 @@ export function LoginPage() {
                   </Field>
 
                   <Field>
-                    <FieldLabel className="text-slate-700 text-[13px]">邮箱</FieldLabel>
+                    <FieldLabel className="text-slate-700 text-[13px]">Email</FieldLabel>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <Input
@@ -190,7 +190,7 @@ export function LoginPage() {
                   </Field>
 
                   <Field>
-                    <FieldLabel className="text-slate-700 text-[13px]">密码</FieldLabel>
+                    <FieldLabel className="text-slate-700 text-[13px]">Password</FieldLabel>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <Input
@@ -205,7 +205,7 @@ export function LoginPage() {
                   </Field>
 
                   <Field>
-                    <FieldLabel className="text-slate-700 text-[13px]">确认密码</FieldLabel>
+                    <FieldLabel className="text-slate-700 text-[13px]">Confirm Password</FieldLabel>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <Input
@@ -224,7 +224,7 @@ export function LoginPage() {
                     disabled={isSubmitting}
                     className="w-full bg-[#2563EB] hover:bg-blue-600 text-white rounded-xl h-11 shadow-lg shadow-blue-200 font-medium text-[13px] transition-all"
                   >
-                    {isSubmitting ? "注册中..." : "注册"}
+                    {isSubmitting ? "Registering..." : "Register"}
                   </Button>
                 </form>
               </TabsContent>
@@ -234,7 +234,7 @@ export function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-slate-400 text-xs mt-6">
-          登录即表示你同意我们的服务条款和隐私政策
+          By signing in you agree to our Terms of Service and Privacy Policy
         </p>
       </div>
     </div>

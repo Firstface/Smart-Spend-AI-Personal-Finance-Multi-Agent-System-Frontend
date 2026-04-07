@@ -67,12 +67,12 @@ type CategoryId = typeof CATEGORIES[number]["id"]
 
 // Classification source labels
 const SOURCE_LABELS: Record<string, string> = {
-  merchant_map: "商家映射",
-  keyword_rule: "关键词规则",
-  subscription: "订阅检测",
-  similarity: "相似度匹配",
-  llm: "LLM回退",
-  llm_reflection: "LLM自反思",
+  merchant_map: "Merchant Map",
+  keyword_rule: "Keyword Rule",
+  subscription: "Subscription Detection",
+  similarity: "Similarity Match",
+  llm: "LLM Fallback",
+  llm_reflection: "LLM Self-Reflection",
 }
 
 // Backend category name → frontend id
@@ -108,8 +108,7 @@ function toFrontendTx(item: TransactionItem): Transaction {
   const catId: CategoryId = CATEGORY_NAME_TO_ID[item.category] ?? "other"
   // Backend stores positive amounts with direction; frontend uses negative for expenses
   const displayAmount =
-    item.direction === "expense" ? -item.amount :
-    item.direction === "income"  ?  item.amount : 0
+    item.direction === "expense" ? -item.amount : item.amount
   // llm_reflected → llm_reflection for SOURCE_LABELS compatibility
   const src = item.decision_source === "llm_reflected" ? "llm_reflection" : item.decision_source
   return {
@@ -233,12 +232,12 @@ export function ClassifyPage() {
         })
 
         toast.success(
-          `文件解析成功，共 ${result.stats.total} 笔，待审查 ${result.stats.needs_review} 笔`,
+          `File parsed successfully: ${result.stats.total} transactions, ${result.stats.needs_review} need review`,
           { duration: 3000 }
         )
       } catch (err: unknown) {
         setUploadStatus("idle")
-        toast.error(`上传失败：${err instanceof Error ? err.message : "未知错误"}`)
+        toast.error(`Upload failed: ${err instanceof Error ? err.message : "Unknown error"}`)
       }
     }
   }
@@ -331,9 +330,9 @@ export function ClassifyPage() {
       setTransactions(prev => prev.map(t =>
         t.id === id ? { ...t, status: "confirmed" as const, needsReview: false } : t
       ))
-      toast.success("分类已确认", { duration: 3000 })
+      toast.success("Classification confirmed", { duration: 3000 })
     } catch (err: unknown) {
-      toast.error(`确认失败：${err instanceof Error ? err.message : "未知错误"}`)
+      toast.error(`Confirm failed: ${err instanceof Error ? err.message : "Unknown error"}`)
     }
   }
 
@@ -347,9 +346,9 @@ export function ClassifyPage() {
         t.id === id ? { ...t, categoryId: newCategoryId, status: "corrected" as const, needsReview: false } : t
       ))
       setEditingId(null)
-      toast.info(`分类已更新为: ${category?.emoji} ${category?.label}`, { duration: 3000 })
+      toast.info(`Category updated to: ${category?.emoji} ${category?.label}`, { duration: 3000 })
     } catch (err: unknown) {
-      toast.error(`纠正失败：${err instanceof Error ? err.message : "未知错误"}`)
+      toast.error(`Correction failed: ${err instanceof Error ? err.message : "Unknown error"}`)
     }
   }
 
@@ -387,8 +386,8 @@ export function ClassifyPage() {
     <div className="flex flex-col h-full gap-4">
       {/* Page Title */}
       <div>
-        <h1 className="text-xl font-bold text-slate-800">分类结果</h1>
-        <p className="text-[13px] text-slate-500 mt-1">上传账单文件并查看自动分类结果</p>
+        <h1 className="text-xl font-bold text-slate-800">Classification Results</h1>
+        <p className="text-[13px] text-slate-500 mt-1">Upload a bill file to view automatic classification results</p>
       </div>
 
       {/* Section 1: Upload Area */}
@@ -415,25 +414,25 @@ export function ClassifyPage() {
           />
           <Upload className="w-5 h-5 text-slate-400 shrink-0" />
           <span className="text-[13px] text-slate-600">
-            拖拽微信(.xlsx)或支付宝(.csv)账单文件到此处，或点击上传
+            Drag & drop WeChat Pay (.xlsx) or Alipay (.csv) files here, or click to upload
           </span>
         </div>
 
         {/* Upload Status */}
         <div className="flex items-center gap-2 min-w-[180px] justify-center sm:justify-start">
           {uploadStatus === "idle" && (
-            <span className="text-[13px] text-slate-400">未上传文件</span>
+            <span className="text-[13px] text-slate-400">No file uploaded</span>
           )}
           {uploadStatus === "uploading" && (
             <div className="flex items-center gap-3 text-[#2563EB]">
               <UploadProgress />
-              <span className="text-[13px]">上传中...</span>
+              <span className="text-[13px]">Uploading...</span>
             </div>
           )}
           {uploadStatus === "classifying" && (
             <div className="flex items-center gap-2 text-[#2563EB]">
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-[13px]">正在解析...</span>
+              <span className="text-[13px]">Parsing...</span>
             </div>
           )}
           {uploadStatus === "done" && uploadedFiles.length > 0 && (
@@ -445,7 +444,7 @@ export function ClassifyPage() {
                   className="bg-[#16A34A]/10 text-[#16A34A] border-[#16A34A]/20 gap-1 pr-1 text-[13px]"
                 >
                   <CheckCircle2 className="w-3 h-3" />
-                  {file.type === "wechat" ? "微信" : "支付宝"} {file.count}笔
+                  {file.type === "wechat" ? "WeChat" : "Alipay"} {file.count} txns
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
@@ -468,11 +467,11 @@ export function ClassifyPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
             <div className="text-2xl font-bold text-slate-800">{stats.total}</div>
-            <div className="text-[13px] text-slate-500">总交易笔数</div>
+            <div className="text-[13px] text-slate-500">Total Transactions</div>
           </div>
           <div className="p-4 bg-[#16A34A]/5 rounded-xl border border-[#16A34A]/20">
             <div className="text-2xl font-bold text-[#16A34A]">{stats.autoClassified}</div>
-            <div className="text-[13px] text-[#16A34A]/80">自动分类 ({stats.autoClassifiedPercent}%)</div>
+            <div className="text-[13px] text-[#16A34A]/80">Auto-classified ({stats.autoClassifiedPercent}%)</div>
           </div>
           <button
             onClick={() => setFilterTab(filterTab === "review" ? "all" : "review")}
@@ -484,11 +483,11 @@ export function ClassifyPage() {
             )}
           >
             <div className="text-2xl font-bold text-[#F59E0B]">{stats.needsReview}</div>
-            <div className="text-[13px] text-[#F59E0B]/80">待审查 (点击筛选)</div>
+            <div className="text-[13px] text-[#F59E0B]/80">Needs Review (click to filter)</div>
           </button>
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
             <div className="text-2xl font-bold text-slate-600">{stats.llmFallback}</div>
-            <div className="text-[13px] text-slate-500">LLM回退 ({stats.llmFallbackPercent}%)</div>
+            <div className="text-[13px] text-slate-500">LLM Fallback ({stats.llmFallbackPercent}%)</div>
           </div>
         </div>
 
@@ -506,7 +505,7 @@ export function ClassifyPage() {
                   filterTab === tab && "bg-[#2563EB] hover:bg-blue-600"
                 )}
               >
-                {tab === "all" ? "全部" : tab === "review" ? "待审查" : "已审查"}
+                {tab === "all" ? "All" : tab === "review" ? "Needs Review" : "Reviewed"}
               </Button>
             ))}
           </div>
@@ -515,7 +514,7 @@ export function ClassifyPage() {
             <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
-                placeholder="搜索商家..."
+                placeholder="Search merchant..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 w-full sm:w-56 text-[13px]"
@@ -525,7 +524,7 @@ export function ClassifyPage() {
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2 text-[13px] shrink-0">
-                  分类筛选
+                  Filter by Category
                   {selectedCategories.length > 0 && (
                     <Badge variant="secondary" className="px-1.5 py-0 text-xs bg-[#2563EB]/10 text-[#2563EB]">
                       {selectedCategories.length}
@@ -564,7 +563,7 @@ export function ClassifyPage() {
                     className="w-full mt-2 text-slate-500 text-[13px]"
                     onClick={() => setSelectedCategories([])}
                   >
-                    清除筛选
+                    Clear Filter
                   </Button>
                 )}
               </PopoverContent>
@@ -583,25 +582,25 @@ export function ClassifyPage() {
                     onClick={() => toggleSort("date")}
                   >
                     <div className="flex items-center gap-1">
-                      日期
+                      Date
                       <ArrowUpDown className="w-3 h-3" />
                     </div>
                   </TableHead>
-                  <TableHead className="text-[13px]">商家</TableHead>
-                  <TableHead className="text-[13px]">描述</TableHead>
+                  <TableHead className="text-[13px]">Merchant</TableHead>
+                  <TableHead className="text-[13px]">Description</TableHead>
                   <TableHead
                     className="cursor-pointer hover:bg-slate-100 transition-colors text-[13px]"
                     onClick={() => toggleSort("amount")}
                   >
                     <div className="flex items-center gap-1">
-                      金额
+                      Amount
                       <ArrowUpDown className="w-3 h-3" />
                     </div>
                   </TableHead>
-                  <TableHead className="text-[13px]">分类</TableHead>
-                  <TableHead className="text-[13px]">置信度</TableHead>
-                  <TableHead className="text-[13px]">依据</TableHead>
-                  <TableHead className="text-[13px]">操作</TableHead>
+                  <TableHead className="text-[13px]">Category</TableHead>
+                  <TableHead className="text-[13px]">Confidence</TableHead>
+                  <TableHead className="text-[13px]">Evidence</TableHead>
+                  <TableHead className="text-[13px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -714,7 +713,7 @@ export function ClassifyPage() {
                             </Button>
                           </div>
                         ) : tx.status === "confirmed" || tx.status === "corrected" ? (
-                          <span className="text-xs text-[#16A34A]">已确认</span>
+                          <span className="text-xs text-[#16A34A]">Confirmed</span>
                         ) : null}
                       </TableCell>
                     </TableRow>
@@ -727,7 +726,7 @@ export function ClassifyPage() {
           {/* Pagination */}
           <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-slate-50">
             <span className="text-[13px] text-slate-600">
-              第 {Math.min((currentPage - 1) * pageSize + 1, filteredTransactions.length)}-{Math.min(currentPage * pageSize, filteredTransactions.length)} 条，共 {filteredTransactions.length} 条
+              Showing {Math.min((currentPage - 1) * pageSize + 1, filteredTransactions.length)}-{Math.min(currentPage * pageSize, filteredTransactions.length)} of {filteredTransactions.length}
             </span>
             <div className="flex items-center gap-2">
               <Button
@@ -738,7 +737,7 @@ export function ClassifyPage() {
                 className="text-[13px]"
               >
                 <ChevronLeft className="w-4 h-4" />
-                上一页
+                Previous
               </Button>
               <Button
                 variant="outline"
@@ -747,7 +746,7 @@ export function ClassifyPage() {
                 disabled={currentPage >= totalPages}
                 className="text-[13px]"
               >
-                下一页
+                Next
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>

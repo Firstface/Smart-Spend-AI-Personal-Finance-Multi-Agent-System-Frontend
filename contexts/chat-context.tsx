@@ -29,19 +29,19 @@ const INITIAL_MESSAGES: ChatMessage[] = [
   {
     id: "welcome",
     role: "bot",
-    content: '👋 你好！我是 Smart Spend AI 助手。你可以：\n• 问我财务知识问题\n• 让我分析你的消费习惯\n• 让我帮你制定预算计划\n\n试试输入"什么是50-30-20法则？"',
+    content: '👋 Hi! I\'m the Smart Spend AI assistant. You can:\n• Ask me personal finance questions\n• Let me analyze your spending habits\n• Let me help you create a budget plan\n\nTry typing "What is the 50-30-20 rule?"',
     timestamp: new Date(Date.now() - 60000),
   },
   {
     id: "user-1",
     role: "user",
-    content: "什么是50-30-20法则？",
+    content: "What is the 50-30-20 rule?",
     timestamp: new Date(Date.now() - 30000),
   },
   {
     id: "bot-1",
     role: "bot",
-    content: "50-30-20法则是一种简单的预算分配方法：\n\n• **50%** 用于必需支出（房租、餐饮、交通等）\n• **30%** 用于个人消费（娱乐、购物等）\n• **20%** 用于储蓄和还债\n\n根据你的收入 ¥13,123，建议分配约 ¥6,562 必需、¥3,937 个人、¥2,625 储蓄。\n\n[📖 来源: 个人理财基础知识库]",
+    content: "The 50-30-20 rule is a simple budgeting method:\n\n• **50%** for needs (rent, food, transport, etc.)\n• **30%** for wants (entertainment, shopping, etc.)\n• **20%** for savings and debt repayment\n\nBased on your income of ¥13,123, the suggested allocation is about ¥6,562 for needs, ¥3,937 for wants, and ¥2,625 for savings.\n\n[📖 Source: Personal Finance Knowledge Base]",
     timestamp: new Date(),
   },
 ]

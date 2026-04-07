@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { ChatPanel } from "./chat-panel"
 
-const navItems = [{ path: "/classify", label: "分类结果" }]
+const navItems = [{ path: "/classify", label: "Classification results" }]
 
 function PageSkeleton() {
   return (
@@ -120,7 +120,7 @@ export function ProtectedLayout() {
                 className="gap-1.5 text-slate-400 hover:bg-red-50 hover:text-[#DC2626]"
               >
                 <LogOut className="h-4 w-4" />
-                <span className="hidden text-[13px] sm:inline">退出</span>
+                <span className="hidden text-[13px] sm:inline">Logout</span>
               </Button>
 
               <Button
