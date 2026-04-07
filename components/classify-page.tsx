@@ -3,7 +3,7 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from "react"
 import { useChat } from "@/contexts/chat-context"
 import { toast } from "sonner"
-import { apiUpload, apiGetTransactions, apiReview, type TransactionItem } from "@/lib/api"
+import { apiUpload, apiGetTransactions, apiReview, apiDeleteTransaction, apiBulkDeleteTransactions, type TransactionItem } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -46,21 +46,22 @@ import {
   Pencil,
   ChevronDown,
   Info,
+  Trash2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // Category definitions with colors
 const CATEGORIES = [
-  { id: "dining", emoji: "🍜", label: "餐饮美食", color: "bg-orange-100 text-orange-700 border-orange-200" },
-  { id: "transport", emoji: "🚗", label: "交通出行", color: "bg-blue-100 text-blue-700 border-blue-200" },
-  { id: "housing", emoji: "🏠", label: "居住", color: "bg-purple-100 text-purple-700 border-purple-200" },
-  { id: "shopping", emoji: "🛒", label: "购物", color: "bg-pink-100 text-pink-700 border-pink-200" },
-  { id: "entertainment", emoji: "🎭", label: "娱乐休闲", color: "bg-teal-100 text-teal-700 border-teal-200" },
-  { id: "subscription", emoji: "📱", label: "订阅服务", color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
-  { id: "medical", emoji: "🏥", label: "医疗健康", color: "bg-red-100 text-red-700 border-red-200" },
-  { id: "daily", emoji: "📦", label: "日用百货", color: "bg-amber-100 text-amber-700 border-amber-200" },
-  { id: "education", emoji: "📚", label: "教育", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
-  { id: "other", emoji: "❓", label: "其他", color: "bg-gray-100 text-gray-700 border-gray-200" },
+  { id: "dining",        emoji: "🍜", label: "Food & Dining",    color: "bg-orange-100 text-orange-700 border-orange-200" },
+  { id: "transport",     emoji: "🚗", label: "Transportation",   color: "bg-blue-100 text-blue-700 border-blue-200" },
+  { id: "housing",       emoji: "🏠", label: "Housing",          color: "bg-purple-100 text-purple-700 border-purple-200" },
+  { id: "shopping",      emoji: "🛒", label: "Shopping",         color: "bg-pink-100 text-pink-700 border-pink-200" },
+  { id: "entertainment", emoji: "🎭", label: "Entertainment",    color: "bg-teal-100 text-teal-700 border-teal-200" },
+  { id: "subscription",  emoji: "📱", label: "Subscriptions",    color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
+  { id: "medical",       emoji: "🏥", label: "Healthcare",       color: "bg-red-100 text-red-700 border-red-200" },
+  { id: "daily",         emoji: "📦", label: "Daily Essentials", color: "bg-amber-100 text-amber-700 border-amber-200" },
+  { id: "education",     emoji: "📚", label: "Education",        color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
+  { id: "other",         emoji: "❓", label: "Other",            color: "bg-gray-100 text-gray-700 border-gray-200" },
 ] as const
 
 type CategoryId = typeof CATEGORIES[number]["id"]
@@ -198,6 +199,7 @@ export function ClassifyPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [sortField, setSortField] = useState<SortField>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc")
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -352,6 +354,32 @@ export function ClassifyPage() {
     }
   }
 
+  // Handle single delete
+  const handleDelete = async (id: string) => {
+    try {
+      await apiDeleteTransaction(id)
+      setTransactions(prev => prev.filter(t => t.id !== id))
+      setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n })
+      toast.success("Transaction deleted", { duration: 2000 })
+    } catch (err: unknown) {
+      toast.error(`Delete failed: ${err instanceof Error ? err.message : "Unknown error"}`)
+    }
+  }
+
+  // Handle bulk delete
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+    try {
+      await apiBulkDeleteTransactions(ids)
+      setTransactions(prev => prev.filter(t => !selectedIds.has(t.id)))
+      setSelectedIds(new Set())
+      toast.success(`Deleted ${ids.length} transaction${ids.length > 1 ? "s" : ""}`, { duration: 2000 })
+    } catch (err: unknown) {
+      toast.error(`Bulk delete failed: ${err instanceof Error ? err.message : "Unknown error"}`)
+    }
+  }
+
   // Toggle sort
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -494,6 +522,17 @@ export function ClassifyPage() {
         {/* 2B: Filter Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
+            {selectedIds.size > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDelete}
+                className="gap-1.5 text-[13px]"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete ({selectedIds.size})
+              </Button>
+            )}
             {(["all", "review", "reviewed"] as FilterTab[]).map((tab) => (
               <Button
                 key={tab}
@@ -577,6 +616,18 @@ export function ClassifyPage() {
             <Table>
               <TableHeader className="sticky top-0 bg-slate-50 z-10">
                 <TableRow>
+                  <TableHead className="w-8 pl-3">
+                    <Checkbox
+                      checked={paginatedTransactions.length > 0 && paginatedTransactions.every(t => selectedIds.has(t.id))}
+                      onCheckedChange={(checked) => {
+                        setSelectedIds(prev => {
+                          const next = new Set(prev)
+                          paginatedTransactions.forEach(t => checked ? next.add(t.id) : next.delete(t.id))
+                          return next
+                        })
+                      }}
+                    />
+                  </TableHead>
                   <TableHead
                     className="cursor-pointer hover:bg-slate-100 transition-colors text-[13px]"
                     onClick={() => toggleSort("date")}
@@ -613,10 +664,22 @@ export function ClassifyPage() {
                     : "bg-white"
 
                   return (
-                    <TableRow 
-                      key={tx.id} 
-                      className={cn(rowBg, "hover:opacity-80 transition-row-bg")}
+                    <TableRow
+                      key={tx.id}
+                      className={cn(rowBg, "hover:opacity-80 transition-row-bg", selectedIds.has(tx.id) && "ring-1 ring-inset ring-[#2563EB]/30")}
                     >
+                      <TableCell className="pl-3">
+                        <Checkbox
+                          checked={selectedIds.has(tx.id)}
+                          onCheckedChange={(checked) => {
+                            setSelectedIds(prev => {
+                              const next = new Set(prev)
+                              checked ? next.add(tx.id) : next.delete(tx.id)
+                              return next
+                            })
+                          }}
+                        />
+                      </TableCell>
                       <TableCell className="text-slate-600 text-[13px]">
                         {formatDate(tx.date)}
                       </TableCell>
@@ -693,28 +756,38 @@ export function ClassifyPage() {
                         </Tooltip>
                       </TableCell>
                       <TableCell>
-                        {tx.needsReview && tx.status === "normal" ? (
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleConfirm(tx.id)}
-                              className="h-7 w-7 p-0 text-[#16A34A] hover:text-[#16A34A] hover:bg-[#16A34A]/10"
-                            >
-                              <Check className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditingId(tx.id)}
-                              className="h-7 w-7 p-0 text-[#2563EB] hover:text-[#2563EB] hover:bg-[#2563EB]/10"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ) : tx.status === "confirmed" || tx.status === "corrected" ? (
-                          <span className="text-xs text-[#16A34A]">Confirmed</span>
-                        ) : null}
+                        <div className="flex items-center gap-1">
+                          {tx.needsReview && tx.status === "normal" ? (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleConfirm(tx.id)}
+                                className="h-7 w-7 p-0 text-[#16A34A] hover:text-[#16A34A] hover:bg-[#16A34A]/10"
+                              >
+                                <Check className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingId(tx.id)}
+                                className="h-7 w-7 p-0 text-[#2563EB] hover:text-[#2563EB] hover:bg-[#2563EB]/10"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                            </>
+                          ) : tx.status === "confirmed" || tx.status === "corrected" ? (
+                            <span className="text-xs text-[#16A34A] mr-1">Confirmed</span>
+                          ) : null}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(tx.id)}
+                            className="h-7 w-7 p-0 text-slate-400 hover:text-[#DC2626] hover:bg-[#DC2626]/10"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   )

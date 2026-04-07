@@ -137,6 +137,28 @@ export async function apiReview(
   return handleResponse<{ status: string; transaction_id: string }>(res)
 }
 
+// ── Delete ────────────────────────────────────────────────────────────────────
+export async function apiDeleteTransaction(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/transactions/${id}`, {
+    method: "DELETE",
+    headers: { ...authHeaders() },
+  })
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`
+    try { const b = await res.json(); if (b.detail) detail = b.detail } catch {}
+    throw new Error(detail)
+  }
+}
+
+export async function apiBulkDeleteTransactions(ids: string[]): Promise<{ deleted: number }> {
+  const res = await fetch(`${API_BASE}/api/transactions/bulk-delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ ids }),
+  })
+  return handleResponse<{ deleted: number }>(res)
+}
+
 // ── Chat ──────────────────────────────────────────────────────────────────────
 export async function apiChat(message: string) {
   const res = await fetch(`${API_BASE}/api/chat`, {
