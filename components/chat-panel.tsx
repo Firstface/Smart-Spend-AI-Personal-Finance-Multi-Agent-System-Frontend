@@ -136,14 +136,15 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 }
 
 export function ChatPanel() {
-  const { 
-    messages, 
-    addMessage, 
-    clearMessages, 
-    isExpanded, 
-    toggleExpanded, 
+  const {
+    messages,
+    addMessage,
+    clearMessages,
+    isExpanded,
+    toggleExpanded,
     hasUnreadBotMessage,
-    markAsRead 
+    markAsRead,
+    notifyNewTransaction,
   } = useChat()
   const [inputValue, setInputValue] = useState("")
   const [isTyping, setIsTyping] = useState(false)
@@ -177,6 +178,9 @@ export function ChatPanel() {
     try {
       const data = await apiChat(userMsg)
       addMessage("bot", data.reply)
+      if (data.type === "quick_entry" && data.transaction) {
+        notifyNewTransaction(data.transaction)
+      }
     } catch (err: unknown) {
       addMessage("bot", `❌ 请求失败：${err instanceof Error ? err.message : "网络错误"}`)
     } finally {

@@ -48,6 +48,8 @@ export function LoginPage() {
     try {
       await login(loginEmail, loginPassword)
       navigate("/classify")
+    } catch (err: unknown) {
+      alert(`登录失败：${err instanceof Error ? err.message : "未知错误"}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -63,6 +65,8 @@ export function LoginPage() {
     try {
       await register(registerUsername, registerEmail, registerPassword)
       navigate("/classify")
+    } catch (err: unknown) {
+      alert(`注册失败：${err instanceof Error ? err.message : "未知错误"}`)
     } finally {
       setIsSubmitting(false)
     }

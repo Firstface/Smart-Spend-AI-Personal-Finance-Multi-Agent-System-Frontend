@@ -1,6 +1,7 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react"
+import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from "react"
+import type { TransactionItem } from "@/lib/api"
 
 export interface ChatMessage {
   id: string
@@ -18,6 +19,8 @@ interface ChatContextType {
   setExpanded: (expanded: boolean) => void
   hasUnreadBotMessage: boolean
   markAsRead: () => void
+  registerTransactionCallback: (cb: (tx: TransactionItem) => void) => void
+  notifyNewTransaction: (tx: TransactionItem) => void
 }
 
 const ChatContext = createContext<ChatContextType | null>(null)
@@ -47,6 +50,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES)
   const [isExpanded, setIsExpanded] = useState(false)
   const [hasUnreadBotMessage, setHasUnreadBotMessage] = useState(true)
+  const transactionCallbackRef = useRef<((tx: TransactionItem) => void) | null>(null)
+
+  const registerTransactionCallback = useCallback((cb: (tx: TransactionItem) => void) => {
+    transactionCallbackRef.current = cb
+  }, [])
+
+  const notifyNewTransaction = useCallback((tx: TransactionItem) => {
+    transactionCallbackRef.current?.(tx)
+  }, [])
 
   const addMessage = useCallback((role: "user" | "bot", content: string) => {
     const newMessage: ChatMessage = {
@@ -93,6 +105,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         setExpanded: setIsExpanded,
         hasUnreadBotMessage,
         markAsRead,
+        registerTransactionCallback,
+        notifyNewTransaction,
       }}
     >
       {children}

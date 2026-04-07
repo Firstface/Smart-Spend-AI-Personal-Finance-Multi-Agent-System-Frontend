@@ -20,7 +20,14 @@ async function handleResponse<T>(res: Response): Promise<T> {
     let detail = `HTTP ${res.status}`
     try {
       const body = await res.json()
-      detail = body.detail ?? detail
+      if (typeof body.detail === "string") {
+        detail = body.detail
+      } else if (Array.isArray(body.detail)) {
+        // Pydantic 422 validation errors
+        detail = body.detail.map((e: { msg?: string; loc?: string[] }) =>
+          `${e.loc?.slice(1).join(".") ?? "field"}: ${e.msg ?? "invalid"}`
+        ).join("\n")
+      }
     } catch {}
     throw new Error(detail)
   }

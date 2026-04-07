@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useMemo, useEffect, useCallback } from "react"
+import { useChat } from "@/contexts/chat-context"
 import { toast } from "sonner"
 import { apiUpload, apiGetTransactions, apiReview, type TransactionItem } from "@/lib/api"
 import { Button } from "@/components/ui/button"
@@ -184,6 +185,14 @@ export function ClassifyPage() {
   }, [])
 
   useEffect(() => { loadTransactions() }, [loadTransactions])
+
+  // Register chat callback to prepend new quick-entry transactions instantly
+  const { registerTransactionCallback } = useChat()
+  useEffect(() => {
+    registerTransactionCallback((tx) => {
+      setTransactions((prev) => [toFrontendTx(tx), ...prev])
+    })
+  }, [registerTransactionCallback])
   const [filterTab, setFilterTab] = useState<FilterTab>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
