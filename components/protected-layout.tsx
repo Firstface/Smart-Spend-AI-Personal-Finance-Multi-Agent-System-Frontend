@@ -9,7 +9,10 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { ChatPanel } from "./chat-panel"
 
-const navItems = [{ path: "/classify", label: "Classification results" }]
+const navItems = [
+  { path: "/classify", label: "Classification results" },
+  { path: "/insight-1", label: "Insight" },
+]
 
 function PageSkeleton() {
   return (

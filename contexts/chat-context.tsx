@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from "react"
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react"
 import type { TransactionItem } from "@/lib/api"
 
 export interface ChatMessage {
@@ -13,6 +13,7 @@ export interface ChatMessage {
 interface ChatContextType {
   messages: ChatMessage[]
   addMessage: (role: "user" | "bot", content: string) => void
+  startNewConversation: () => void
   clearMessages: () => void
   isExpanded: boolean
   toggleExpanded: () => void
@@ -24,6 +25,7 @@ interface ChatContextType {
 }
 
 const ChatContext = createContext<ChatContextType | null>(null)
+const CHAT_STORAGE_KEY = "smart_spend_chat_messages_v1"
 
 const INITIAL_MESSAGES: ChatMessage[] = [
   {
@@ -60,6 +62,33 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     transactionCallbackRef.current?.(tx)
   }, [])
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CHAT_STORAGE_KEY)
+      if (!raw) return
+
+      const parsed = JSON.parse(raw) as Array<Omit<ChatMessage, "timestamp"> & { timestamp: string }>
+      if (!Array.isArray(parsed) || parsed.length === 0) return
+
+      setMessages(
+        parsed.map((m) => ({
+          ...m,
+          timestamp: new Date(m.timestamp),
+        }))
+      )
+    } catch {
+      // Ignore malformed local storage payload and keep default messages.
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages))
+    } catch {
+      // Ignore local storage quota/security errors.
+    }
+  }, [messages])
+
   const addMessage = useCallback((role: "user" | "bot", content: string) => {
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -75,10 +104,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const clearMessages = useCallback(() => {
+  const startNewConversation = useCallback(() => {
     setMessages([INITIAL_MESSAGES[0]]) // Keep the welcome message
     setHasUnreadBotMessage(false)
   }, [])
+
+  const clearMessages = useCallback(() => {
+    startNewConversation()
+  }, [startNewConversation])
 
   const toggleExpanded = useCallback(() => {
     setIsExpanded((prev) => {
@@ -99,6 +132,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       value={{
         messages,
         addMessage,
+        startNewConversation,
         clearMessages,
         isExpanded,
         toggleExpanded,

@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from "react"
+import { useState, useRef, useEffect, useCallback, type ReactNode, type ChangeEvent, type KeyboardEvent } from "react"
 import { useChat, type ChatMessage } from "@/contexts/chat-context"
 import { apiChat } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { ChevronDown, ChevronUp, Send, Bot, Trash2, BookOpen } from "lucide-react"
+import { Send, Bot, Plus, X, MessageSquare, BookOpen } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 function TypingIndicator() {
@@ -32,7 +32,7 @@ function formatMessageContent(content: string) {
     const lineContent = isBullet ? line.trim().slice(1).trim() : line
     
     const processInline = (text: string) => {
-      const parts: (string | JSX.Element)[] = []
+      const parts: ReactNode[] = []
       let remaining = text
       let keyIndex = 0
       
@@ -139,9 +139,10 @@ export function ChatPanel() {
   const {
     messages,
     addMessage,
-    clearMessages,
+    startNewConversation,
     isExpanded,
     toggleExpanded,
+    setExpanded,
     hasUnreadBotMessage,
     markAsRead,
     notifyNewTransaction,
@@ -195,110 +196,115 @@ export function ChatPanel() {
     }
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value)
     const textarea = e.target
     textarea.style.height = 'auto'
     textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px'
   }
 
-  const handleClearChat = () => {
-    clearMessages()
+  const handleNewConversation = () => {
+    startNewConversation()
+    setInputValue("")
+    setIsTyping(false)
   }
 
   return (
-    <div className="sticky top-14 md:top-16 z-40 bg-white border-b border-slate-200 shadow-sm">
-      {/* Expanded Messages Area with slide animation */}
-      <div 
-        className={cn(
-          "overflow-hidden transition-all duration-300 ease-in-out",
-          isExpanded ? "max-h-[300px] opacity-100" : "max-h-0 opacity-0"
-        )}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Chat Header with Clear Button */}
-          <div className="flex items-center justify-between py-2 border-b border-slate-100">
-            <span className="text-xs text-slate-500">Chat History</span>
-            <button
-              onClick={handleClearChat}
-              className="flex items-center gap-1 text-xs text-slate-400 hover:text-[#DC2626] transition-colors"
-            >
-              <Trash2 className="w-3 h-3" />
-              Clear Chat
-            </button>
+    <>
+      {isExpanded && (
+        <button
+          type="button"
+          aria-label="Close chat panel"
+          onClick={() => setExpanded(false)}
+          className="fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-[1px]"
+        />
+      )}
+
+      <div className="fixed bottom-4 right-4 z-50">
+        <div
+          className={cn(
+            "mb-3 w-[min(420px,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-300/40 transition-all duration-200",
+            isExpanded
+              ? "translate-y-0 scale-100 opacity-100"
+              : "pointer-events-none translate-y-4 scale-95 opacity-0"
+          )}
+        >
+          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+            <div className="flex items-center gap-2 text-slate-700">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#2563EB] to-blue-500 shadow-sm">
+                <Bot className="h-4 w-4 text-white" />
+              </div>
+              <span className="text-[13px] font-semibold">AI Assistant</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleNewConversation}
+                className="h-8 gap-1.5 px-2 text-[12px] text-slate-500 hover:bg-slate-100 hover:text-[#2563EB]"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                New Conversation
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setExpanded(false)}
+                className="h-8 w-8 p-0 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          
-          <div className="max-h-[250px] overflow-y-auto py-4 space-y-3 scrollbar-thin">
+
+          <div className="h-[min(56vh,440px)] overflow-y-auto space-y-3 px-4 py-3 scrollbar-thin">
             {messages.map((message) => (
               <MessageBubble key={message.id} message={message} />
             ))}
             {isTyping && <TypingIndicator />}
             <div ref={messagesEndRef} />
           </div>
-        </div>
-      </div>
 
-      {/* Input Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-3 py-3">
-          {/* AI Label */}
-          <div className="flex items-center gap-2 text-slate-600 shrink-0">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#2563EB] to-blue-500 flex items-center justify-center shadow-sm">
-              <Bot className="w-4 h-4 text-white" />
+          <div className="border-t border-slate-100 p-3">
+            <div className="flex items-end gap-2">
+              <textarea
+                ref={textareaRef}
+                value={inputValue}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Enter the question or accounting instruction..."
+                rows={1}
+                className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] leading-relaxed transition-all focus:border-[#2563EB]/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20"
+                style={{ minHeight: "38px", maxHeight: "100px" }}
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSend}
+                disabled={!inputValue.trim() || isTyping}
+                className="h-[38px] rounded-xl bg-[#2563EB] px-3 text-white shadow-md shadow-blue-200 transition-all hover:bg-blue-600 disabled:opacity-50 disabled:shadow-none"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
             </div>
-            <span className="text-[13px] font-medium hidden sm:inline">AI Assistant</span>
           </div>
-
-          {/* Input */}
-          <div className="flex-1 relative">
-            <textarea
-              ref={textareaRef}
-              value={inputValue}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              placeholder="Enter a question or command..."
-              rows={1}
-              className="w-full resize-none pr-4 py-2 px-3 bg-slate-50 border border-slate-200 focus:bg-white focus:border-[#2563EB]/50 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 rounded-xl text-[13px] leading-relaxed transition-all"
-              style={{ minHeight: '38px', maxHeight: '100px' }}
-            />
-          </div>
-
-          {/* Send Button */}
-          <Button
-            size="sm"
-            onClick={handleSend}
-            disabled={!inputValue.trim() || isTyping}
-            className="bg-[#2563EB] hover:bg-blue-600 text-white rounded-xl px-4 shadow-md shadow-blue-200 disabled:opacity-50 disabled:shadow-none transition-all"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-
-          {/* Toggle Button with notification dot */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleExpanded}
-            className="relative border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded-xl gap-1.5 shrink-0 transition-all"
-          >
-            {/* Red notification dot */}
-            {!isExpanded && hasUnreadBotMessage && (
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#DC2626] rounded-full animate-pulse" />
-            )}
-            
-            {isExpanded ? (
-              <>
-                <ChevronUp className="w-4 h-4" />
-                <span className="hidden sm:inline text-[13px]">Collapse</span>
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-4 h-4" />
-                <span className="hidden sm:inline text-[13px]">Expand</span>
-              </>
-            )}
-          </Button>
         </div>
+
+        <Button
+          type="button"
+          onClick={toggleExpanded}
+          className="relative h-12 rounded-full bg-[#2563EB] px-4 text-white shadow-xl shadow-blue-300 transition-all hover:bg-blue-600"
+        >
+          {!isExpanded && hasUnreadBotMessage && (
+            <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-[#DC2626] ring-2 ring-white" />
+          )}
+          <MessageSquare className="mr-2 h-4 w-4" />
+          <span className="text-[13px] font-medium">AI Chat</span>
+        </Button>
       </div>
-    </div>
+    </>
   )
 }

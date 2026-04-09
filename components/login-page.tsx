@@ -140,6 +140,8 @@ export function LoginPage() {
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
                         placeholder="••••••••"
+                        minLength={1}
+                        maxLength={72}
                         required
                         className="pl-10 bg-slate-50 border-slate-200 focus:bg-white focus:border-[#2563EB]/50 focus:ring-[#2563EB]/20 rounded-xl text-[13px]"
                       />
@@ -198,6 +200,8 @@ export function LoginPage() {
                         value={registerPassword}
                         onChange={(e) => setRegisterPassword(e.target.value)}
                         placeholder="••••••••"
+                        minLength={6}
+                        maxLength={72}
                         required
                         className="pl-10 bg-slate-50 border-slate-200 focus:bg-white focus:border-[#2563EB]/50 focus:ring-[#2563EB]/20 rounded-xl text-[13px]"
                       />
@@ -213,6 +217,8 @@ export function LoginPage() {
                         value={registerConfirmPassword}
                         onChange={(e) => setRegisterConfirmPassword(e.target.value)}
                         placeholder="••••••••"
+                        minLength={6}
+                        maxLength={72}
                         required
                         className="pl-10 bg-slate-50 border-slate-200 focus:bg-white focus:border-[#2563EB]/50 focus:ring-[#2563EB]/20 rounded-xl text-[13px]"
                       />

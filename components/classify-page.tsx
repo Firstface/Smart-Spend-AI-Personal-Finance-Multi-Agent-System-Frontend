@@ -72,36 +72,36 @@ const SOURCE_LABELS: Record<string, string> = {
   keyword_rule: "Keyword Rule",
   subscription: "Subscription Detection",
   similarity: "Similarity Match",
-  llm: "LLM Fallback",
+  llm: "LLM Used",
   llm_reflection: "LLM Self-Reflection",
 }
 
 // Backend category name → frontend id
 const CATEGORY_NAME_TO_ID: Record<string, CategoryId> = {
-  "餐饮美食": "dining",
-  "交通出行": "transport",
-  "居住":     "housing",
-  "购物":     "shopping",
-  "娱乐休闲": "entertainment",
-  "订阅服务": "subscription",
-  "医疗健康": "medical",
-  "日用百货": "daily",
-  "教育":     "education",
-  "其他":     "other",
+  "Food & Dining": "dining",
+  "Transportation": "transport",
+  "Housing": "housing",
+  "Shopping": "shopping",
+  "Entertainment": "entertainment",
+  "Subscriptions": "subscription",
+  "Healthcare": "medical",
+  "Daily Essentials": "daily",
+  "Education": "education",
+  "Other": "other",
 }
 
 // Frontend id → backend category name
 const CATEGORY_ID_TO_NAME: Record<CategoryId, string> = {
-  dining:        "餐饮美食",
-  transport:     "交通出行",
-  housing:       "居住",
-  shopping:      "购物",
-  entertainment: "娱乐休闲",
-  subscription:  "订阅服务",
-  medical:       "医疗健康",
-  daily:         "日用百货",
-  education:     "教育",
-  other:         "其他",
+  dining: "Food & Dining",
+  transport: "Transportation",
+  housing: "Housing",
+  shopping: "Shopping",
+  entertainment: "Entertainment",
+  subscription: "Subscriptions",
+  medical: "Healthcare",
+  daily: "Daily Essentials",
+  education: "Education",
+  other: "Other",
 }
 
 // Convert backend TransactionItem to frontend Transaction
@@ -177,8 +177,8 @@ export function ClassifyPage() {
     try {
       const data = await apiGetTransactions({ size: 100 })
       setTransactions(data.items.map(toFrontendTx))
-    } catch {
-      // If backend is not available, silently fail (start with empty table)
+    } catch (err: unknown) {
+      toast.error(`Load transactions failed: ${err instanceof Error ? err.message : "Unknown error"}`)
     } finally {
       setIsLoadingTx(false)
     }
@@ -515,7 +515,7 @@ export function ClassifyPage() {
           </button>
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
             <div className="text-2xl font-bold text-slate-600">{stats.llmFallback}</div>
-            <div className="text-[13px] text-slate-500">LLM Fallback ({stats.llmFallbackPercent}%)</div>
+            <div className="text-[13px] text-slate-500">LLM Used ({stats.llmFallbackPercent}%)</div>
           </div>
         </div>
 
