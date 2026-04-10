@@ -178,7 +178,11 @@ export async function apiChat(message: string) {
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ message }),
   })
-  return handleResponse<{ reply: string; type: "quick_entry" | "general" | "error"; transaction?: TransactionItem }>(res)
+  return handleResponse<{
+    reply: string
+    type: "quick_entry" | "education" | "general" | "error"
+    transaction?: TransactionItem
+  }>(res)
 }
 
 
