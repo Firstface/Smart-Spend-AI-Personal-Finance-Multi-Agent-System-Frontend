@@ -10,6 +10,18 @@ function getToken(): string | null {
   return localStorage.getItem("auth_token")
 }
 
+function getUserId(): string | null {
+  if (typeof window === "undefined") return null
+  const savedUser = localStorage.getItem("user")
+  if (!savedUser) return null
+  try {
+    const user = JSON.parse(savedUser) as { id?: string }
+    return typeof user.id === "string" && user.id.trim() ? user.id : null
+  } catch {
+    return null
+  }
+}
+
 function authHeaders(): HeadersInit {
   const token = getToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
@@ -167,4 +179,45 @@ export async function apiChat(message: string) {
     body: JSON.stringify({ message }),
   })
   return handleResponse<{ reply: string; type: "quick_entry" | "general" | "error"; transaction?: TransactionItem }>(res)
+}
+
+
+// ── Education ─────────────────────────────────────────────────────────────────
+export interface EducationCitation {
+  doc_id: string
+  title: string
+  chunk_index: number
+  distance: number
+}
+
+export interface EducationRetrievalMeta {
+  initial_k: number
+  max_k: number
+  used_k: number
+  threshold: number
+  confidence: number
+  top_distance: number | null
+}
+
+export interface EducationAskResponse {
+  status: "answer" | "refuse"
+  answer: string
+  citations: EducationCitation[]
+  refusal_type?: string
+  retrieval: EducationRetrievalMeta
+}
+
+export async function apiEducationAsk(question: string) {
+  const userId = getUserId()
+  if (!userId) {
+    throw new Error("User ID not found. Please login and try again.")
+  }
+
+  const res = await fetch(`${API_BASE}/education/ask`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ question, user_id: userId }),
+  })
+
+  return handleResponse<EducationAskResponse>(res)
 }
