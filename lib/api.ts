@@ -172,17 +172,131 @@ export async function apiBulkDeleteTransactions(ids: string[]): Promise<{ delete
 }
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
+export interface ChatInsightsParams {
+  user_id?: string
+  start_date?: string
+  end_date?: string
+  use_llm?: boolean
+}
+
+export interface ChatApiResponse {
+  reply: string
+  type?: string
+  transaction?: TransactionItem
+  insights?: InsightsResult
+  user_id?: string
+  start_date?: string
+  end_date?: string
+  use_llm?: boolean
+  insights_params?: ChatInsightsParams
+}
+
 export async function apiChat(message: string) {
   const res = await fetch(`${API_BASE}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ message }),
   })
-  return handleResponse<{
-    reply: string
-    type: "quick_entry" | "education" | "general" | "error"
-    transaction?: TransactionItem
-  }>(res)
+  return handleResponse<ChatApiResponse>(res)
+}
+
+// ── Insights ──────────────────────────────────────────────────────────────────
+export interface CategorySummary {
+  category: string
+  amount: number
+  percentage: number
+}
+
+export interface MonthlySummary {
+  total_expense: number
+  monthly_totals: Record<string, number>
+  top_categories: CategorySummary[]
+  average_monthly_spending: number
+}
+
+export interface SpendingTrend {
+  category: string
+  data_points: Array<[string, number]>
+  growth_rate: number
+  seasonal_pattern: string
+  moving_average: Array<[string, number]>
+}
+
+export interface UnusualSpending {
+  transaction_id: string
+  date: string
+  amount: number
+  category: string
+  counterparty: string
+  deviation: number
+}
+
+export interface SubscriptionItem {
+  merchant?: string
+  monthly_amount?: number
+  last_charge_date?: string
+  charge_frequency?: string
+}
+
+export interface SubscriptionSummary {
+  total_monthly_subscription: number
+  subscriptions: SubscriptionItem[]
+}
+
+export interface SpendingRecommendation {
+  type: string
+  title: string
+  description: string
+  priority: "high" | "medium" | "low" | string
+}
+
+export interface InsightsResult {
+  monthly_summary: MonthlySummary
+  spending_trends: SpendingTrend[]
+  unusual_spending: UnusualSpending[]
+  subscriptions: SubscriptionSummary
+  recommendations: SpendingRecommendation[]
+}
+
+export async function apiGenerateInsights(params?: {
+  start_date?: string
+  end_date?: string
+  use_llm?: boolean
+  user_id?: string
+}) {
+  const userId = params?.user_id?.trim() || getUserId()
+  if (!userId) {
+    throw new Error("User ID not found. Please provide a test user ID or login first.")
+  }
+
+  const q = new URLSearchParams()
+  q.set("use_llm", params?.use_llm ? "true" : "false")
+
+  const body: Record<string, string> = { user_id: userId }
+  if (params?.start_date) body.start_date = params.start_date
+  if (params?.end_date) body.end_date = params.end_date
+
+  const res = await fetch(`${API_BASE}/insights/generate?${q.toString()}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(body),
+  })
+
+  return handleResponse<InsightsResult>(res)
+}
+
+export async function apiInsightsHealth() {
+  const res = await fetch(`${API_BASE}/insights/health`, {
+    headers: { ...authHeaders() },
+  })
+  return handleResponse<Record<string, unknown>>(res)
+}
+
+export async function apiInsightsLlmHealth() {
+  const res = await fetch(`${API_BASE}/insights/llm/health`, {
+    headers: { ...authHeaders() },
+  })
+  return handleResponse<Record<string, unknown>>(res)
 }
 
 

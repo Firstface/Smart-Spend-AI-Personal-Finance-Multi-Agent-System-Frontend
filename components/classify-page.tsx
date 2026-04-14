@@ -655,7 +655,13 @@ export function ClassifyPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedTransactions.map((tx) => {
+                {isLoadingTx ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="py-10 text-center text-sm text-slate-500">
+                      Loading transactions...
+                    </TableCell>
+                  </TableRow>
+                ) : paginatedTransactions.map((tx) => {
                   const category = getCategory(tx.categoryId)
                   const rowBg = tx.needsReview && tx.status === "normal"
                     ? "bg-[#FFF7ED]"
@@ -674,7 +680,11 @@ export function ClassifyPage() {
                           onCheckedChange={(checked) => {
                             setSelectedIds(prev => {
                               const next = new Set(prev)
-                              checked ? next.add(tx.id) : next.delete(tx.id)
+                              if (checked) {
+                                next.add(tx.id)
+                              } else {
+                                next.delete(tx.id)
+                              }
                               return next
                             })
                           }}

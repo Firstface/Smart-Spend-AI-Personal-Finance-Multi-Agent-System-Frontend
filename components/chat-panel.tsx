@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, type ReactNode, type ChangeEv
 import { useChat, type ChatMessage } from "@/contexts/chat-context"
 import { apiChat } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Send, Bot, Plus, X, MessageSquare, BookOpen } from "lucide-react"
+import { Send, Bot, Plus, X, MessageSquare, BookOpen, Sparkles, TrendingUp, TriangleAlert, Wallet } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 function TypingIndicator() {
@@ -114,6 +114,10 @@ function formatMessageContent(content: string) {
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isBot = message.role === "bot"
 
+  if (isBot && message.type === "insights" && message.insightsPayload) {
+    return <InsightsBubble message={message} />
+  }
+
   return (
     <div
       className={cn(
@@ -130,6 +134,186 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         )}
       >
         {isBot ? formatMessageContent(message.content) : message.content}
+      </div>
+    </div>
+  )
+}
+
+function formatMoney(value: number | undefined) {
+  const safe = typeof value === "number" && Number.isFinite(value) ? value : 0
+  return `¥${safe.toLocaleString("zh-CN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`
+}
+
+function normalizePercent(value: number | undefined) {
+  const safe = typeof value === "number" && Number.isFinite(value) ? value : 0
+  const raw = Math.abs(safe) <= 1 ? safe * 100 : safe
+  return `${raw.toFixed(1)}%`
+}
+
+function InsightMetric({
+  label,
+  value,
+  hint,
+}: {
+  label: string
+  value: string
+  hint?: string
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-3">
+      <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="mt-1 text-base font-semibold text-slate-900">{value}</div>
+      {hint ? <div className="mt-1 text-[11px] text-slate-500">{hint}</div> : null}
+    </div>
+  )
+}
+
+function InsightSection({
+  icon,
+  title,
+  children,
+}: {
+  icon: ReactNode
+  title: string
+  children: ReactNode
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-3">
+      <div className="mb-2 flex items-center gap-2 text-slate-800">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+          {icon}
+        </div>
+        <div className="text-[12px] font-semibold">{title}</div>
+      </div>
+      <div className="space-y-1.5 text-[13px] leading-relaxed text-slate-600">{children}</div>
+    </div>
+  )
+}
+
+function InsightsBubble({ message }: { message: ChatMessage }) {
+  const payload = message.insightsPayload
+  if (!payload) return null
+
+  const { reply, insights } = payload
+  const topCategory = insights.monthly_summary.top_categories[0]
+  const topAnomaly = insights.unusual_spending[0]
+  const topTrend = insights.spending_trends[0]
+  const topRecommendation = insights.recommendations[0]
+
+  return (
+    <div className="flex w-full justify-start animate-fade-in">
+      <div className="max-w-[92%] rounded-3xl rounded-bl-md border border-blue-100 bg-gradient-to-br from-white via-blue-50/60 to-slate-50 px-4 py-4 text-[13px] leading-relaxed shadow-md shadow-blue-100/40">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2 text-slate-800">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#2563EB] to-blue-500 shadow-sm">
+              <Sparkles className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <div className="font-semibold">Follow Agent</div>
+              <div className="text-[11px] text-slate-500">Financial Insights</div>
+            </div>
+          </div>
+          <div className="rounded-full border border-blue-100 bg-white px-2.5 py-1 text-[11px] font-medium text-[#2563EB]">
+            Insights
+          </div>
+        </div>
+
+        {reply.trim() ? (
+          <div className="mb-4 rounded-2xl border border-white/80 bg-white/90 px-3 py-3 text-slate-700 shadow-sm">
+            {formatMessageContent(reply)}
+          </div>
+        ) : null}
+
+        <div className="mb-3 grid gap-2 sm:grid-cols-3">
+          <InsightMetric
+            label="Total Expense"
+            value={formatMoney(insights.monthly_summary.total_expense)}
+            hint="Current analysis window"
+          />
+          <InsightMetric
+            label="Monthly Average"
+            value={formatMoney(insights.monthly_summary.average_monthly_spending)}
+            hint="Average spending per month"
+          />
+          <InsightMetric
+            label="Subscriptions"
+            value={formatMoney(insights.subscriptions.total_monthly_subscription)}
+            hint="Detected recurring cost"
+          />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <InsightSection icon={<Wallet className="h-3.5 w-3.5" />} title="Spending Summary">
+            {topCategory ? (
+              <>
+                <div>
+                  Top category: <span className="font-semibold text-slate-900">{topCategory.category}</span>
+                </div>
+                <div>
+                  Amount: <span className="font-semibold text-slate-900">{formatMoney(topCategory.amount)}</span>
+                </div>
+                <div>
+                  Share: <span className="font-semibold text-slate-900">{normalizePercent(topCategory.percentage)}</span>
+                </div>
+              </>
+            ) : (
+              <div>No category summary returned.</div>
+            )}
+          </InsightSection>
+
+          <InsightSection icon={<TrendingUp className="h-3.5 w-3.5" />} title="Trend Signal">
+            {topTrend ? (
+              <>
+                <div>
+                  Category: <span className="font-semibold text-slate-900">{topTrend.category}</span>
+                </div>
+                <div>
+                  Growth: <span className="font-semibold text-slate-900">{normalizePercent(topTrend.growth_rate)}</span>
+                </div>
+                <div>
+                  Pattern: <span className="font-semibold text-slate-900">{topTrend.seasonal_pattern || "N/A"}</span>
+                </div>
+              </>
+            ) : (
+              <div>No trend data.</div>
+            )}
+          </InsightSection>
+
+          <InsightSection icon={<TriangleAlert className="h-3.5 w-3.5" />} title="Alert">
+            {topAnomaly ? (
+              <>
+                <div>
+                  Merchant: <span className="font-semibold text-slate-900">{topAnomaly.counterparty || "Unknown"}</span>
+                </div>
+                <div>
+                  Amount: <span className="font-semibold text-slate-900">{formatMoney(topAnomaly.amount)}</span>
+                </div>
+                <div>
+                  Deviation: <span className="font-semibold text-slate-900">{normalizePercent(topAnomaly.deviation)}</span>
+                </div>
+              </>
+            ) : (
+              <div>No unusual spending detected.</div>
+            )}
+          </InsightSection>
+
+          <InsightSection icon={<Sparkles className="h-3.5 w-3.5" />} title="Recommendation">
+            {topRecommendation ? (
+              <>
+                <div className="font-semibold text-slate-900">{topRecommendation.title}</div>
+                <div>{topRecommendation.description}</div>
+                <div>
+                  Priority: <span className="font-semibold text-slate-900">{topRecommendation.priority}</span>
+                </div>
+              </>
+            ) : (
+              <div>No recommendation returned.</div>
+            )}
+          </InsightSection>
+        </div>
       </div>
     </div>
   )
@@ -178,7 +362,18 @@ export function ChatPanel() {
     setIsTyping(true)
     try {
       const data = await apiChat(userMsg)
-      addMessage("bot", data.reply)
+      if (data.type === "insights" && data.insights) {
+        addMessage("bot", data.reply, {
+          type: "insights",
+          insightsPayload: {
+            reply: data.reply,
+            insights: data.insights,
+          },
+        })
+      } else {
+        addMessage("bot", data.reply)
+      }
+
       if (data.type === "quick_entry" && data.transaction) {
         notifyNewTransaction(data.transaction)
       }
@@ -187,7 +382,7 @@ export function ChatPanel() {
     } finally {
       setIsTyping(false)
     }
-  }, [inputValue, isTyping, addMessage])
+  }, [inputValue, isTyping, addMessage, notifyNewTransaction])
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {

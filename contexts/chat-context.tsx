@@ -1,18 +1,32 @@
 "use client"
 
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react"
-import type { TransactionItem } from "@/lib/api"
+import type { InsightsResult, TransactionItem } from "@/lib/api"
+
+export interface InsightsMessagePayload {
+  reply: string
+  insights: InsightsResult
+}
 
 export interface ChatMessage {
   id: string
   role: "user" | "bot"
   content: string
   timestamp: Date
+  type?: "text" | "insights"
+  insightsPayload?: InsightsMessagePayload
 }
 
 interface ChatContextType {
   messages: ChatMessage[]
-  addMessage: (role: "user" | "bot", content: string) => void
+  addMessage: (
+    role: "user" | "bot",
+    content: string,
+    options?: {
+      type?: ChatMessage["type"]
+      insightsPayload?: InsightsMessagePayload
+    }
+  ) => void
   startNewConversation: () => void
   clearMessages: () => void
   isExpanded: boolean
@@ -89,12 +103,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, [messages])
 
-  const addMessage = useCallback((role: "user" | "bot", content: string) => {
+  const addMessage = useCallback((
+    role: "user" | "bot",
+    content: string,
+    options?: {
+      type?: ChatMessage["type"]
+      insightsPayload?: InsightsMessagePayload
+    }
+  ) => {
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
       role,
       content,
       timestamp: new Date(),
+      type: options?.type ?? "text",
+      insightsPayload: options?.insightsPayload,
     }
     setMessages((prev) => [...prev, newMessage])
     
