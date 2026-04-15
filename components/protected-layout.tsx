@@ -11,7 +11,6 @@ import { ChatPanel } from "./chat-panel"
 
 const navItems = [
   { path: "/classify", label: "Classification results" },
-  { path: "/insight-1", label: "Insight" },
 ]
 
 function PageSkeleton() {
