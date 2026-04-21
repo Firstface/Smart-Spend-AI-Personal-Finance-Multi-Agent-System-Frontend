@@ -67,6 +67,9 @@ function translateRecommendationTitle(title: string) {
   if (title === "减少总支出") return "Reduce total spending"
   if (title === "优化订阅服务") return "Optimize subscriptions"
   if (title === "关注异常支出") return "Review unusual spending"
+  if (title === "优化日常开支，减少不必要的支出") return "Optimize daily expenses"
+  if (title === "增加收入来源以提升财务状况") return "Increase income sources"
+  if (title === "建立紧急备用金，应对突发情况") return "Build an emergency fund"
 
   const categoryMatch = title.match(/^减少(.+)支出$/)
   if (categoryMatch) {
@@ -104,7 +107,28 @@ function translateRecommendationDescription(description: string) {
     "You have multiple subscriptions. Consider reviewing whether all of them are still necessary."
   )
 
-  return formatCurrencyInText(result)
+  result = result.replace(
+    /根据您的月度财务摘要和最近的交易记录，您在住房、交通、教育、食品与餐饮以及医疗方面的支出较大。您可以考虑以下建议：1\. 降低订阅服务费用：如Netflix、Spotify等；2\. 调整日常开销，如减少外卖、咖啡消费等。3\. 减少不必要的医疗服务和药品费用。/,
+    "Based on your monthly financial summary and recent transactions, your spending is relatively high in housing, transportation, education, food and dining, and healthcare. Consider lowering subscription costs such as Netflix and Spotify, trimming everyday spending like takeout and coffee, and reducing non-essential medical and pharmacy expenses."
+  )
+
+  result = result.replace(
+    /考虑到您的支出模式，您可能需要考虑如何增加收入。建议如下：1\. 申请兼职工作或自由职业；2\. 提高现有工作的薪资水平；3\. 开展副业或者投资。/,
+    "Based on your spending pattern, consider expanding your income sources. You could look for part-time or freelance work, negotiate a higher salary in your current role, or build a side business or investment plan."
+  )
+
+  result = result.replace(
+    /鉴于您的食品与餐饮、交通和医疗支出较大，建议您考虑增加紧急备用金以应对突发事件。这将有助于确保在其他必要支出发生时能够迅速应对。/,
+    "Because your spending on food and dining, transportation, and healthcare is relatively high, consider building a larger emergency fund to handle unexpected events and required future expenses more comfortably."
+  )
+
+  result = formatCurrencyInText(result)
+
+  if (containsChinese(result)) {
+    return "Review this recommendation and adjust your spending plan based on the latest insight."
+  }
+
+  return result
 }
 
 function translateRecommendation(item: SpendingRecommendation): SpendingRecommendation {

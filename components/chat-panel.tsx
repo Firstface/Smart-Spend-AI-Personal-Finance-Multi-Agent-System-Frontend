@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode, type ChangeEvent, type KeyboardEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import { useChat, type ChatMessage } from "@/contexts/chat-context"
-import { apiChat } from "@/lib/api"
+import { apiChat, apiGenerateInsights, type ChatApiResponse, type InsightsResult } from "@/lib/api"
 import { translateInsightsReply, translateInsightsResult } from "@/lib/insights-display"
+import { saveLatestInsights } from "@/lib/latest-insights"
 import { Button } from "@/components/ui/button"
 import { ArrowUpRight, Send, Bot, Plus, X, MessageSquare, BookOpen, Sparkles, TrendingUp, TriangleAlert, Wallet } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -153,6 +154,17 @@ function normalizePercent(value: number | undefined) {
   const safe = typeof value === "number" && Number.isFinite(value) ? value : 0
   const raw = Math.abs(safe) <= 1 ? safe * 100 : safe
   return `${raw.toFixed(1)}%`
+}
+
+function buildInsightsRequestParams(data: ChatApiResponse) {
+  const nested = data.insights_params
+
+  return {
+    user_id: nested?.user_id ?? data.user_id,
+    start_date: nested?.start_date ?? data.start_date,
+    end_date: nested?.end_date ?? data.end_date,
+    use_llm: true,
+  }
 }
 
 function InsightMetric({
@@ -403,11 +415,28 @@ export function ChatPanel() {
     try {
       const data = await apiChat(userMsg)
       if (data.type === "insights" && data.insights) {
+        let effectiveInsights: InsightsResult = data.insights
+
+        try {
+          effectiveInsights = await apiGenerateInsights(buildInsightsRequestParams(data))
+        } catch {
+          // Fall back to the chat payload if the LLM-backed insights refresh fails.
+        }
+
+        const translatedReply = translateInsightsReply(data.reply)
+        const translatedInsights = translateInsightsResult(effectiveInsights)
+
+        saveLatestInsights({
+          reply: translatedReply,
+          insights: translatedInsights,
+          updatedAt: new Date().toISOString(),
+        })
+
         addMessage("bot", data.reply, {
           type: "insights",
           insightsPayload: {
             reply: data.reply,
-            insights: data.insights,
+            insights: effectiveInsights,
           },
         })
       } else {

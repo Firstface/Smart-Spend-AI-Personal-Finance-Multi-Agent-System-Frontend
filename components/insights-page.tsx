@@ -12,6 +12,7 @@ import {
   type UnusualSpending,
 } from "@/lib/api"
 import { translateInsightsReply, translateInsightsResult } from "@/lib/insights-display"
+import { latestInsightsEventName, readLatestInsights, type LatestInsightsSnapshot } from "@/lib/latest-insights"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -298,34 +299,75 @@ interface RouteState {
 export function InsightsPage() {
   const location = useLocation()
   const routeState = (location.state as RouteState | null) ?? null
+  const initialSnapshot = routeState?.insights
+    ? {
+        reply: translateInsightsReply(routeState.reply ?? ""),
+        insights: translateInsightsResult(routeState.insights),
+        updatedAt: new Date().toISOString(),
+      }
+    : readLatestInsights()
   const [insights, setInsights] = useState<InsightsResult | null>(
-    routeState?.insights ? translateInsightsResult(routeState.insights) : null
+    initialSnapshot?.insights ?? null
   )
-  const [reply, setReply] = useState(routeState?.reply ? translateInsightsReply(routeState.reply) : "")
-  const [isLoading, setIsLoading] = useState(!routeState?.insights)
+  const [reply, setReply] = useState(initialSnapshot?.reply ?? "")
+  const [isLoading, setIsLoading] = useState(!initialSnapshot?.insights)
   const [error, setError] = useState<string | null>(null)
+  const [updatedAt, setUpdatedAt] = useState(initialSnapshot?.updatedAt ?? "")
+
+  const applySnapshot = useCallback((snapshot: LatestInsightsSnapshot) => {
+    setInsights(snapshot.insights)
+    setReply(snapshot.reply)
+    setUpdatedAt(snapshot.updatedAt)
+    setIsLoading(false)
+    setError(null)
+  }, [])
 
   const loadInsights = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     try {
-      const result = await apiGenerateInsights({ use_llm: false })
-      setInsights(translateInsightsResult(result))
-      if (!reply) {
-        setReply("This is a real-time Follow / Insights summary generated from your current transaction data.")
-      }
+      const result = await apiGenerateInsights({ use_llm: true })
+      const translated = translateInsightsResult(result)
+      setInsights(translated)
+      setReply("This is the latest LLM-generated Follow / Insights summary based on your current transaction data.")
+      setUpdatedAt(new Date().toISOString())
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load insights")
     } finally {
       setIsLoading(false)
     }
-  }, [reply])
+  }, [])
 
   useEffect(() => {
-    if (!routeState?.insights) {
+    if (!initialSnapshot?.insights) {
       void loadInsights()
     }
-  }, [routeState?.insights, loadInsights])
+  }, [initialSnapshot?.insights, loadInsights])
+
+  useEffect(() => {
+    const handleRealtimeUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent<LatestInsightsSnapshot>
+      if (customEvent.detail) {
+        applySnapshot(customEvent.detail)
+      }
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key && event.key !== "smart_spend_latest_insights_v1") return
+      const snapshot = readLatestInsights()
+      if (snapshot) {
+        applySnapshot(snapshot)
+      }
+    }
+
+    window.addEventListener(latestInsightsEventName(), handleRealtimeUpdate as EventListener)
+    window.addEventListener("storage", handleStorage)
+
+    return () => {
+      window.removeEventListener(latestInsightsEventName(), handleRealtimeUpdate as EventListener)
+      window.removeEventListener("storage", handleStorage)
+    }
+  }, [applySnapshot])
 
   const quickStats = useMemo(() => {
     if (!insights) return null
@@ -346,6 +388,11 @@ export function InsightsPage() {
           <p className="mt-1 text-[13px] text-slate-500">
             Review structured Follow Agent results and real-time calculated metrics.
           </p>
+          {updatedAt ? (
+            <p className="mt-1 text-[11px] text-slate-400">
+              Last updated {new Date(updatedAt).toLocaleString("en-US")}
+            </p>
+          ) : null}
         </div>
         <Button variant="outline" className="gap-2 self-start" onClick={() => void loadInsights()}>
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
