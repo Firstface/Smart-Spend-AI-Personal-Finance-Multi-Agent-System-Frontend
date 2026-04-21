@@ -1,6 +1,6 @@
 /**
- * 后端 API 客户端。
- * 统一处理 baseURL、Authorization Header 和错误响应。
+ * Backend API client.
+ * Centralizes baseURL handling, Authorization headers, and error responses.
  */
 
 export const API_BASE = "http://localhost:8000"

@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback, type ReactNode, type ChangeEvent, type KeyboardEvent } from "react"
+import { useNavigate } from "react-router-dom"
 import { useChat, type ChatMessage } from "@/contexts/chat-context"
 import { apiChat } from "@/lib/api"
+import { translateInsightsReply, translateInsightsResult } from "@/lib/insights-display"
 import { Button } from "@/components/ui/button"
-import { Send, Bot, Plus, X, MessageSquare, BookOpen, Sparkles, TrendingUp, TriangleAlert, Wallet } from "lucide-react"
+import { ArrowUpRight, Send, Bot, Plus, X, MessageSquare, BookOpen, Sparkles, TrendingUp, TriangleAlert, Wallet } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 function TypingIndicator() {
@@ -194,18 +196,40 @@ function InsightSection({
 }
 
 function InsightsBubble({ message }: { message: ChatMessage }) {
+  const navigate = useNavigate()
   const payload = message.insightsPayload
   if (!payload) return null
 
-  const { reply, insights } = payload
-  const topCategory = insights.monthly_summary.top_categories[0]
-  const topAnomaly = insights.unusual_spending[0]
-  const topTrend = insights.spending_trends[0]
-  const topRecommendation = insights.recommendations[0]
+  const translatedReply = translateInsightsReply(payload.reply)
+  const translatedInsights = translateInsightsResult(payload.insights)
+  const topCategory = translatedInsights.monthly_summary.top_categories[0]
+  const topAnomaly = translatedInsights.unusual_spending[0]
+  const topTrend = translatedInsights.spending_trends[0]
+  const topRecommendation = translatedInsights.recommendations[0]
+
+  const openInsightsPage = () => {
+    navigate("/insights", {
+      state: {
+        reply: translatedReply,
+        insights: translatedInsights,
+      },
+    })
+  }
 
   return (
     <div className="flex w-full justify-start animate-fade-in">
-      <div className="max-w-[92%] rounded-3xl rounded-bl-md border border-blue-100 bg-gradient-to-br from-white via-blue-50/60 to-slate-50 px-4 py-4 text-[13px] leading-relaxed shadow-md shadow-blue-100/40">
+      <div
+        className="max-w-[92%] cursor-pointer rounded-3xl rounded-bl-md border border-blue-100 bg-gradient-to-br from-white via-blue-50/60 to-slate-50 px-4 py-4 font-sans text-[13px] leading-relaxed shadow-md shadow-blue-100/40 transition-transform hover:-translate-y-0.5"
+        onClick={openInsightsPage}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault()
+            openInsightsPage()
+          }
+        }}
+        role="button"
+        tabIndex={0}
+      >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-2 text-slate-800">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#2563EB] to-blue-500 shadow-sm">
@@ -221,26 +245,26 @@ function InsightsBubble({ message }: { message: ChatMessage }) {
           </div>
         </div>
 
-        {reply.trim() ? (
+        {translatedReply.trim() ? (
           <div className="mb-4 rounded-2xl border border-white/80 bg-white/90 px-3 py-3 text-slate-700 shadow-sm">
-            {formatMessageContent(reply)}
+            {formatMessageContent(translatedReply)}
           </div>
         ) : null}
 
         <div className="mb-3 grid gap-2 sm:grid-cols-3">
           <InsightMetric
             label="Total Expense"
-            value={formatMoney(insights.monthly_summary.total_expense)}
+            value={formatMoney(translatedInsights.monthly_summary.total_expense)}
             hint="Current analysis window"
           />
           <InsightMetric
             label="Monthly Average"
-            value={formatMoney(insights.monthly_summary.average_monthly_spending)}
+            value={formatMoney(translatedInsights.monthly_summary.average_monthly_spending)}
             hint="Average spending per month"
           />
           <InsightMetric
             label="Subscriptions"
-            value={formatMoney(insights.subscriptions.total_monthly_subscription)}
+            value={formatMoney(translatedInsights.subscriptions.total_monthly_subscription)}
             hint="Detected recurring cost"
           />
         </div>
@@ -313,6 +337,22 @@ function InsightsBubble({ message }: { message: ChatMessage }) {
               <div>No recommendation returned.</div>
             )}
           </InsightSection>
+        </div>
+
+        <div className="mt-4 flex items-center justify-end text-[#2563EB]">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 rounded-full px-3 text-xs text-[#2563EB] hover:bg-blue-100 hover:text-blue-700"
+            onClick={(event) => {
+              event.stopPropagation()
+              openInsightsPage()
+            }}
+          >
+            View full page
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </Button>
         </div>
       </div>
     </div>

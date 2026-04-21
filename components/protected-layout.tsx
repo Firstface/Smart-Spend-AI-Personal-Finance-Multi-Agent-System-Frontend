@@ -11,6 +11,7 @@ import { ChatPanel } from "./chat-panel"
 
 const navItems = [
   { path: "/classify", label: "Classification results" },
+  { path: "/insights", label: "Insights" },
 ]
 
 function PageSkeleton() {
@@ -60,7 +61,7 @@ export function ProtectedLayout() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2563EB] animate-pulse">
             <Wallet className="h-5 w-5 text-white" />
           </div>
-          <div className="text-sm font-medium text-[#2563EB]">加载中...</div>
+          <div className="text-sm font-medium text-[#2563EB]">Loading...</div>
         </div>
       </div>
     )

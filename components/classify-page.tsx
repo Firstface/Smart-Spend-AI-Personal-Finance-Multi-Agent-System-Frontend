@@ -276,6 +276,28 @@ export function ClassifyPage() {
     }
   }, [transactions])
 
+  const liveOverview = useMemo(() => {
+    const expenses = transactions.filter((tx) => tx.amount < 0)
+    const totalExpenseAmount = expenses.reduce((sum, tx) => sum + Math.abs(tx.amount), 0)
+    const averageExpense = expenses.length > 0 ? totalExpenseAmount / expenses.length : 0
+
+    const categoryMap = new Map<string, number>()
+    for (const tx of expenses) {
+      const categoryLabel =
+        CATEGORIES.find((category) => category.id === tx.categoryId)?.label ?? "Other"
+      categoryMap.set(categoryLabel, (categoryMap.get(categoryLabel) ?? 0) + Math.abs(tx.amount))
+    }
+    const topCategory = [...categoryMap.entries()].sort((a, b) => b[1] - a[1])[0]
+
+    return {
+      totalExpenseAmount,
+      averageExpense,
+      topCategoryName: topCategory?.[0] ?? "N/A",
+      topCategoryAmount: topCategory?.[1] ?? 0,
+      reviewRate: stats.total > 0 ? (stats.needsReview / stats.total) * 100 : 0,
+    }
+  }, [transactions, stats.total, stats.needsReview])
+
   // Filter and sort transactions
   const filteredTransactions = useMemo(() => {
     let result = [...transactions]
@@ -416,6 +438,29 @@ export function ClassifyPage() {
       <div>
         <h1 className="text-xl font-bold text-slate-800">Classification Results</h1>
         <p className="text-[13px] text-slate-500 mt-1">Upload a bill file to view automatic classification results</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Live Expense</div>
+          <div className="mt-2 text-2xl font-bold text-slate-900">¥{liveOverview.totalExpenseAmount.toFixed(2)}</div>
+          <div className="mt-1 text-[12px] text-slate-500">Current expense total from loaded transactions</div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Average Expense</div>
+          <div className="mt-2 text-2xl font-bold text-slate-900">¥{liveOverview.averageExpense.toFixed(2)}</div>
+          <div className="mt-1 text-[12px] text-slate-500">Average per expense transaction</div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Top Category</div>
+          <div className="mt-2 text-lg font-bold text-slate-900">{liveOverview.topCategoryName}</div>
+          <div className="mt-1 text-[12px] text-slate-500">¥{liveOverview.topCategoryAmount.toFixed(2)}</div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Review Rate</div>
+          <div className="mt-2 text-2xl font-bold text-slate-900">{liveOverview.reviewRate.toFixed(1)}%</div>
+          <div className="mt-1 text-[12px] text-slate-500">Portion of transactions that need review</div>
+        </div>
       </div>
 
       {/* Section 1: Upload Area */}
