@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from "react"
 import { useLocation } from "react-router-dom"
 import {
   apiGenerateInsights,
+  apiGetTransactions,
   type InsightsResult,
   type MonthlySummary,
   type SpendingRecommendation,
   type SpendingTrend,
   type SubscriptionSummary,
+  type TransactionItem,
   type UnusualSpending,
 } from "@/lib/api"
 import { translateInsightsReply, translateInsightsResult } from "@/lib/insights-display"
@@ -45,6 +47,142 @@ function normalizePercent(value: number | undefined) {
   const safe = typeof value === "number" && Number.isFinite(value) ? value : 0
   const raw = Math.abs(safe) <= 1 ? safe * 100 : safe
   return `${raw.toFixed(1)}%`
+}
+
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100
+}
+
+function getMonthKey(dateValue: string) {
+  const date = new Date(dateValue)
+  if (Number.isNaN(date.getTime())) return null
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+}
+
+function toExpenseTransactions(transactions: TransactionItem[]) {
+  return transactions.filter((item) => item.direction === "expense" && item.amount > 0)
+}
+
+function buildMovingAverage(points: Array<[string, number]>) {
+  return points.map(([month], index) => {
+    const slice = points.slice(Math.max(0, index - 1), index + 1)
+    const average = slice.reduce((sum, [, amount]) => sum + amount, 0) / slice.length
+    return [month, roundMoney(average)] as [string, number]
+  })
+}
+
+function buildTrendFallback(expenses: TransactionItem[]): SpendingTrend[] {
+  const byCategory = new Map<string, Map<string, number>>()
+
+  for (const item of expenses) {
+    const monthKey = getMonthKey(item.transaction_time)
+    if (!monthKey) continue
+    const monthMap = byCategory.get(item.category) ?? new Map<string, number>()
+    monthMap.set(monthKey, roundMoney((monthMap.get(monthKey) ?? 0) + item.amount))
+    byCategory.set(item.category, monthMap)
+  }
+
+  return Array.from(byCategory.entries())
+    .map(([category, monthMap]) => {
+      const dataPoints = Array.from(monthMap.entries()).sort(([a], [b]) => a.localeCompare(b))
+      const total = dataPoints.reduce((sum, [, amount]) => sum + amount, 0)
+      const previous = dataPoints.at(-2)?.[1]
+      const latest = dataPoints.at(-1)?.[1] ?? 0
+      const growthRate = previous && previous > 0 ? (latest - previous) / previous : 0
+
+      return {
+        category,
+        total,
+        trend: {
+          category,
+          data_points: dataPoints,
+          growth_rate: growthRate,
+          seasonal_pattern: dataPoints.length >= 2 ? "Monthly" : "No clear pattern",
+          moving_average: buildMovingAverage(dataPoints),
+        },
+      }
+    })
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5)
+    .map((item) => item.trend)
+}
+
+function buildUnusualFallback(expenses: TransactionItem[]): UnusualSpending[] {
+  if (expenses.length === 0) return []
+
+  const average = expenses.reduce((sum, item) => sum + item.amount, 0) / expenses.length
+  const threshold = Math.max(average * 1.8, average + 100)
+
+  return expenses
+    .filter((item) => item.amount >= threshold)
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 5)
+    .map((item) => ({
+      transaction_id: item.id,
+      date: item.transaction_time,
+      amount: item.amount,
+      category: item.category,
+      counterparty: item.counterparty,
+      deviation: average > 0 ? item.amount / average - 1 : 0,
+    }))
+}
+
+function buildSubscriptionFallback(expenses: TransactionItem[]): SubscriptionSummary {
+  const subscriptionItems = expenses.filter((item) => item.category === "Subscription Services")
+  const byMerchant = new Map<string, TransactionItem[]>()
+
+  for (const item of subscriptionItems) {
+    const merchant = item.counterparty || "Unnamed subscription"
+    const group = byMerchant.get(merchant) ?? []
+    group.push(item)
+    byMerchant.set(merchant, group)
+  }
+
+  const subscriptions = Array.from(byMerchant.entries()).map(([merchant, items]) => {
+    const sorted = [...items].sort((a, b) => (
+      new Date(b.transaction_time).getTime() - new Date(a.transaction_time).getTime()
+    ))
+    const avgAmount = items.reduce((sum, item) => sum + item.amount, 0) / items.length
+    const isAnnual = items.some((item) => /annual|year/i.test(item.goods_description ?? ""))
+
+    return {
+      merchant,
+      monthly_amount: roundMoney(isAnnual ? avgAmount / 12 : avgAmount),
+      last_charge_date: sorted[0]?.transaction_time,
+      charge_frequency: isAnnual ? "Yearly" : "Monthly",
+    }
+  })
+
+  return {
+    total_monthly_subscription: roundMoney(
+      subscriptions.reduce((sum, item) => sum + (item.monthly_amount ?? 0), 0)
+    ),
+    subscriptions,
+  }
+}
+
+function mergeInsightFallbacks(insights: InsightsResult, transactions: TransactionItem[]) {
+  const expenses = toExpenseTransactions(transactions)
+  if (expenses.length === 0) return insights
+
+  const spendingTrends = insights.spending_trends.length > 0
+    ? insights.spending_trends
+    : buildTrendFallback(expenses)
+
+  const unusualSpending = insights.unusual_spending.length > 0
+    ? insights.unusual_spending
+    : buildUnusualFallback(expenses)
+
+  const subscriptions = insights.subscriptions.subscriptions.length > 0 || insights.subscriptions.total_monthly_subscription > 0
+    ? insights.subscriptions
+    : buildSubscriptionFallback(expenses)
+
+  return {
+    ...insights,
+    spending_trends: spendingTrends,
+    unusual_spending: unusualSpending,
+    subscriptions,
+  }
 }
 
 function MetricCard({
@@ -329,6 +467,7 @@ export function InsightsPage() {
   const [reply, setReply] = useState(shouldAutoGenerate ? "" : (initialSnapshot?.reply ?? ""))
   const [updatedAt, setUpdatedAt] = useState(shouldAutoGenerate ? "" : (initialSnapshot?.updatedAt ?? ""))
   const [isGenerating, setIsGenerating] = useState(shouldAutoGenerate)
+  const [transactions, setTransactions] = useState<TransactionItem[]>([])
   const applySnapshot = (snapshot: LatestInsightsSnapshot) => {
     setInsights(snapshot.insights)
     setReply(snapshot.reply)
@@ -394,16 +533,41 @@ export function InsightsPage() {
     }
   }, [shouldAutoGenerate])
 
-  const quickStats = useMemo(() => {
+  useEffect(() => {
+    let active = true
+
+    apiGetTransactions({ page: 1, size: 100 })
+      .then((result) => {
+        if (active) {
+          setTransactions(result.items)
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setTransactions([])
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const displayInsights = useMemo(() => {
     if (!insights) return null
-    const topCategory = insights.monthly_summary.top_categories[0]
+    return mergeInsightFallbacks(insights, transactions)
+  }, [insights, transactions])
+
+  const quickStats = useMemo(() => {
+    if (!displayInsights) return null
+    const topCategory = displayInsights.monthly_summary.top_categories[0]
     return {
-      totalExpense: formatMoney(insights.monthly_summary.total_expense),
-      average: formatMoney(insights.monthly_summary.average_monthly_spending),
-      subscriptions: formatMoney(insights.subscriptions.total_monthly_subscription),
+      totalExpense: formatMoney(displayInsights.monthly_summary.total_expense),
+      average: formatMoney(displayInsights.monthly_summary.average_monthly_spending),
+      subscriptions: formatMoney(displayInsights.subscriptions.total_monthly_subscription),
       topCategory: topCategory?.category ?? "N/A",
     }
-  }, [insights])
+  }, [displayInsights])
 
   return (
     <div className="flex flex-col gap-5">
@@ -440,7 +604,7 @@ export function InsightsPage() {
         </Card>
       ) : null}
 
-      {quickStats && insights ? (
+      {quickStats && displayInsights ? (
         <>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <MetricCard title="Total Expense" value={quickStats.totalExpense} hint="Real-time cumulative spending" />
@@ -449,14 +613,14 @@ export function InsightsPage() {
             <MetricCard title="Top Category" value={quickStats.topCategory} hint="Leading spending category" />
           </div>
 
-          <SummarySection summary={insights.monthly_summary} />
+          <SummarySection summary={displayInsights.monthly_summary} />
           <div className="grid gap-4 xl:grid-cols-2">
-            <TrendSection trends={insights.spending_trends} />
-            <AlertSection unusual={insights.unusual_spending} />
+            <TrendSection trends={displayInsights.spending_trends} />
+            <AlertSection unusual={displayInsights.unusual_spending} />
           </div>
           <div className="grid gap-4 xl:grid-cols-2">
-            <SubscriptionSection subscriptions={insights.subscriptions} />
-            <RecommendationSection recommendations={insights.recommendations} />
+            <SubscriptionSection subscriptions={displayInsights.subscriptions} />
+            <RecommendationSection recommendations={displayInsights.recommendations} />
           </div>
         </>
       ) : null}
