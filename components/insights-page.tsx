@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useLocation } from "react-router-dom"
 import {
+  apiGenerateInsights,
   type InsightsResult,
   type MonthlySummary,
   type SpendingRecommendation,
@@ -14,6 +15,7 @@ import { translateInsightsReply, translateInsightsResult } from "@/lib/insights-
 import {
   latestInsightsEventName,
   readLatestInsights,
+  saveLatestInsights,
   type LatestInsightsSnapshot,
 } from "@/lib/latest-insights"
 import {
@@ -296,6 +298,20 @@ interface RouteState {
   reply?: string
 }
 
+function hasInsightContent(insights: InsightsResult | null | undefined) {
+  if (!insights) return false
+
+  return (
+    insights.monthly_summary.total_expense > 0 ||
+    insights.monthly_summary.top_categories.length > 0 ||
+    insights.spending_trends.length > 0 ||
+    insights.unusual_spending.length > 0 ||
+    insights.subscriptions.total_monthly_subscription > 0 ||
+    insights.subscriptions.subscriptions.length > 0 ||
+    insights.recommendations.length > 0
+  )
+}
+
 export function InsightsPage() {
   const location = useLocation()
   const routeState = (location.state as RouteState | null) ?? null
@@ -306,11 +322,13 @@ export function InsightsPage() {
         updatedAt: new Date().toISOString(),
       }
     : readLatestInsights()
+  const shouldAutoGenerate = !hasInsightContent(initialSnapshot?.insights)
   const [insights, setInsights] = useState<InsightsResult | null>(
-    initialSnapshot?.insights ?? null
+    shouldAutoGenerate ? null : (initialSnapshot?.insights ?? null)
   )
-  const [reply, setReply] = useState(initialSnapshot?.reply ?? "")
-  const [updatedAt, setUpdatedAt] = useState(initialSnapshot?.updatedAt ?? "")
+  const [reply, setReply] = useState(shouldAutoGenerate ? "" : (initialSnapshot?.reply ?? ""))
+  const [updatedAt, setUpdatedAt] = useState(shouldAutoGenerate ? "" : (initialSnapshot?.updatedAt ?? ""))
+  const [isGenerating, setIsGenerating] = useState(shouldAutoGenerate)
   const applySnapshot = (snapshot: LatestInsightsSnapshot) => {
     setInsights(snapshot.insights)
     setReply(snapshot.reply)
@@ -341,6 +359,40 @@ export function InsightsPage() {
       window.removeEventListener("storage", handleStorage)
     }
   }, [])
+
+  useEffect(() => {
+    if (!shouldAutoGenerate) return
+
+    let active = true
+    setIsGenerating(true)
+
+    apiGenerateInsights({ use_llm: true })
+      .then((result) => {
+        if (!active) return
+
+        const snapshot: LatestInsightsSnapshot = {
+          userId: null,
+          reply: "I reviewed your recent spending and generated the latest financial insights below.",
+          insights: translateInsightsResult(result),
+          updatedAt: new Date().toISOString(),
+        }
+
+        saveLatestInsights(snapshot)
+        applySnapshot(snapshot)
+      })
+      .catch(() => {
+        if (!active) return
+      })
+      .finally(() => {
+        if (active) {
+          setIsGenerating(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [shouldAutoGenerate])
 
   const quickStats = useMemo(() => {
     if (!insights) return null
@@ -381,7 +433,9 @@ export function InsightsPage() {
       {!insights ? (
         <Card className="rounded-2xl border-slate-200 py-0">
           <CardContent className="flex items-center gap-3 px-5 py-5 text-sm text-slate-500">
-            Open AI Chat and trigger an insights request to populate this page with the latest recommendation set.
+            {isGenerating
+              ? "Generating the latest insights from your transaction history..."
+              : "Open AI Chat and trigger an insights request to populate this page with the latest recommendation set."}
           </CardContent>
         </Card>
       ) : null}
