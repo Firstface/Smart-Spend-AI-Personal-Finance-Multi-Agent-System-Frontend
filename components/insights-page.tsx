@@ -1,9 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useLocation } from "react-router-dom"
 import {
-  apiGenerateInsights,
   type InsightsResult,
   type MonthlySummary,
   type SpendingRecommendation,
@@ -12,8 +11,11 @@ import {
   type UnusualSpending,
 } from "@/lib/api"
 import { translateInsightsReply, translateInsightsResult } from "@/lib/insights-display"
-import { latestInsightsEventName, readLatestInsights, type LatestInsightsSnapshot } from "@/lib/latest-insights"
-import { Button } from "@/components/ui/button"
+import {
+  latestInsightsEventName,
+  readLatestInsights,
+  type LatestInsightsSnapshot,
+} from "@/lib/latest-insights"
 import {
   Card,
   CardContent,
@@ -24,8 +26,6 @@ import {
 import {
   AlertTriangle,
   CreditCard,
-  Loader2,
-  RefreshCw,
   Sparkles,
   TrendingUp,
   Wallet,
@@ -310,39 +310,12 @@ export function InsightsPage() {
     initialSnapshot?.insights ?? null
   )
   const [reply, setReply] = useState(initialSnapshot?.reply ?? "")
-  const [isLoading, setIsLoading] = useState(!initialSnapshot?.insights)
-  const [error, setError] = useState<string | null>(null)
   const [updatedAt, setUpdatedAt] = useState(initialSnapshot?.updatedAt ?? "")
-
-  const applySnapshot = useCallback((snapshot: LatestInsightsSnapshot) => {
+  const applySnapshot = (snapshot: LatestInsightsSnapshot) => {
     setInsights(snapshot.insights)
     setReply(snapshot.reply)
     setUpdatedAt(snapshot.updatedAt)
-    setIsLoading(false)
-    setError(null)
-  }, [])
-
-  const loadInsights = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const result = await apiGenerateInsights({ use_llm: true })
-      const translated = translateInsightsResult(result)
-      setInsights(translated)
-      setReply("This is the latest LLM-generated Follow / Insights summary based on your current transaction data.")
-      setUpdatedAt(new Date().toISOString())
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load insights")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!initialSnapshot?.insights) {
-      void loadInsights()
-    }
-  }, [initialSnapshot?.insights, loadInsights])
+  }
 
   useEffect(() => {
     const handleRealtimeUpdate = (event: Event) => {
@@ -367,7 +340,7 @@ export function InsightsPage() {
       window.removeEventListener(latestInsightsEventName(), handleRealtimeUpdate as EventListener)
       window.removeEventListener("storage", handleStorage)
     }
-  }, [applySnapshot])
+  }, [])
 
   const quickStats = useMemo(() => {
     if (!insights) return null
@@ -386,7 +359,7 @@ export function InsightsPage() {
         <div>
           <h1 className="text-xl font-bold text-slate-800">Insights Dashboard</h1>
           <p className="mt-1 text-[13px] text-slate-500">
-            Review structured Follow Agent results and real-time calculated metrics.
+            Review the latest structured Follow Agent result generated from AI Chat.
           </p>
           {updatedAt ? (
             <p className="mt-1 text-[11px] text-slate-400">
@@ -394,10 +367,9 @@ export function InsightsPage() {
             </p>
           ) : null}
         </div>
-        <Button variant="outline" className="gap-2 self-start" onClick={() => void loadInsights()}>
-          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          Refresh
-        </Button>
+        <div className="self-start rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500">
+          Updates only after an AI Chat insight reply
+        </div>
       </div>
 
       {reply ? (
@@ -406,17 +378,10 @@ export function InsightsPage() {
         </Card>
       ) : null}
 
-      {error ? (
-        <Card className="rounded-2xl border-red-200 bg-red-50 py-0">
-          <CardContent className="px-5 py-4 text-sm text-red-700">{error}</CardContent>
-        </Card>
-      ) : null}
-
-      {isLoading && !insights ? (
+      {!insights ? (
         <Card className="rounded-2xl border-slate-200 py-0">
           <CardContent className="flex items-center gap-3 px-5 py-5 text-sm text-slate-500">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Calculating the latest insights...
+            Open AI Chat and trigger an insights request to populate this page with the latest recommendation set.
           </CardContent>
         </Card>
       ) : null}

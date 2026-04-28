@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { apiLogin, apiRegister } from "@/lib/api"
+import { clearLatestInsights } from "@/lib/latest-insights"
 
 interface User {
   id: string
@@ -53,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem("auth_token")
     localStorage.removeItem("user")
+    clearLatestInsights()
     setUser(null)
   }
 

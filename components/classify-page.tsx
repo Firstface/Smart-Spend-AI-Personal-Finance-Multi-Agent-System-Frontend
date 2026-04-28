@@ -170,6 +170,8 @@ export function ClassifyPage() {
   // Transaction state
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoadingTx, setIsLoadingTx] = useState(false)
+  const [hasLoadedTxOnce, setHasLoadedTxOnce] = useState(false)
+  const retryLoadRef = useRef(0)
 
   // Load transactions from API on mount
   const loadTransactions = useCallback(async () => {
@@ -180,11 +182,49 @@ export function ClassifyPage() {
     } catch (err: unknown) {
       toast.error(`Load transactions failed: ${err instanceof Error ? err.message : "Unknown error"}`)
     } finally {
+      setHasLoadedTxOnce(true)
       setIsLoadingTx(false)
     }
   }, [])
 
   useEffect(() => { loadTransactions() }, [loadTransactions])
+
+  useEffect(() => {
+    const handleFocusRefresh = () => {
+      void loadTransactions()
+    }
+
+    const handleVisibilityRefresh = () => {
+      if (document.visibilityState === "visible") {
+        void loadTransactions()
+      }
+    }
+
+    window.addEventListener("focus", handleFocusRefresh)
+    document.addEventListener("visibilitychange", handleVisibilityRefresh)
+    return () => {
+      window.removeEventListener("focus", handleFocusRefresh)
+      document.removeEventListener("visibilitychange", handleVisibilityRefresh)
+    }
+  }, [loadTransactions])
+
+  useEffect(() => {
+    if (transactions.length > 0) {
+      retryLoadRef.current = 0
+      return
+    }
+
+    if (isLoadingTx || retryLoadRef.current >= 3) {
+      return
+    }
+
+    retryLoadRef.current += 1
+    const timer = window.setTimeout(() => {
+      void loadTransactions()
+    }, retryLoadRef.current * 1500)
+
+    return () => window.clearTimeout(timer)
+  }, [transactions.length, isLoadingTx, loadTransactions])
 
   // Register chat callback to prepend new quick-entry transactions instantly
   const { registerTransactionCallback } = useChat()
@@ -436,29 +476,41 @@ export function ClassifyPage() {
     <div className="flex flex-col h-full gap-4">
       {/* Page Title */}
       <div>
-        <h1 className="text-xl font-bold text-slate-800">Classification Results</h1>
-        <p className="text-[13px] text-slate-500 mt-1">Upload a bill file to view automatic classification results</p>
+        <div>
+          <h1 className="text-xl font-bold text-slate-800">Classification Results</h1>
+          <p className="text-[13px] text-slate-500 mt-1">Upload a bill file to view automatic classification results</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Live Expense</div>
-          <div className="mt-2 text-2xl font-bold text-slate-900">¥{liveOverview.totalExpenseAmount.toFixed(2)}</div>
+          <div className="mt-2 text-2xl font-bold text-slate-900">
+            {isLoadingTx && !hasLoadedTxOnce ? "Loading..." : `¥${liveOverview.totalExpenseAmount.toFixed(2)}`}
+          </div>
           <div className="mt-1 text-[12px] text-slate-500">Current expense total from loaded transactions</div>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Average Expense</div>
-          <div className="mt-2 text-2xl font-bold text-slate-900">¥{liveOverview.averageExpense.toFixed(2)}</div>
+          <div className="mt-2 text-2xl font-bold text-slate-900">
+            {isLoadingTx && !hasLoadedTxOnce ? "Loading..." : `¥${liveOverview.averageExpense.toFixed(2)}`}
+          </div>
           <div className="mt-1 text-[12px] text-slate-500">Average per expense transaction</div>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Top Category</div>
-          <div className="mt-2 text-lg font-bold text-slate-900">{liveOverview.topCategoryName}</div>
-          <div className="mt-1 text-[12px] text-slate-500">¥{liveOverview.topCategoryAmount.toFixed(2)}</div>
+          <div className="mt-2 text-lg font-bold text-slate-900">
+            {isLoadingTx && !hasLoadedTxOnce ? "Loading..." : liveOverview.topCategoryName}
+          </div>
+          <div className="mt-1 text-[12px] text-slate-500">
+            {isLoadingTx && !hasLoadedTxOnce ? "Loading..." : `¥${liveOverview.topCategoryAmount.toFixed(2)}`}
+          </div>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Review Rate</div>
-          <div className="mt-2 text-2xl font-bold text-slate-900">{liveOverview.reviewRate.toFixed(1)}%</div>
+          <div className="mt-2 text-2xl font-bold text-slate-900">
+            {isLoadingTx && !hasLoadedTxOnce ? "Loading..." : `${liveOverview.reviewRate.toFixed(1)}%`}
+          </div>
           <div className="mt-1 text-[12px] text-slate-500">Portion of transactions that need review</div>
         </div>
       </div>
